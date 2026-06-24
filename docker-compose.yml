@@ -1,0 +1,19 @@
+# Convenience local Postgres for development.
+# Start with:  docker compose up -d
+# Credentials match the DATABASE_URL in .env.
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: album
+      POSTGRES_PASSWORD: album
+      POSTGRES_DB: albumdashboard
+    # Host 5433 → container 5432, to avoid clashing with a system Postgres on 5432.
+    ports:
+      - '5433:5432'
+    volumes:
+      - album_pgdata:/var/lib/postgresql/data
+
+volumes:
+  album_pgdata:

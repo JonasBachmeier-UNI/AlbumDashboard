@@ -1,31 +1,39 @@
-<main class="min-h-screen flex items-center justify-center bg-neutral-950 p-6 text-neutral-100">
-  <section class="w-full max-w-md rounded-2xl bg-neutral-900 p-8 shadow-xl ring-1 ring-white/10">
-    <h1 class="mb-6 text-sm font-medium uppercase tracking-widest text-neutral-400">
-      Now Playing
-    </h1>
+<div class="min-h-screen flex flex-col bg-neutral-950 text-neutral-100">
+  <!-- Main content area: the record listing -->
+  <main class="flex-1">
+    <app-record-list />
+  </main>
 
-    @if (nowPlaying() === undefined) {
-      <!-- Loading / connecting -->
-      <p class="text-neutral-400">Connecting to Last.fm…</p>
-    } @else if (nowPlaying() === null) {
-      <!-- Nothing playing -->
-      <p class="text-neutral-400">Nothing playing right now</p>
-    } @else {
-      <!-- Currently playing -->
-      <div class="flex items-center gap-4">
-        @if (nowPlaying()!.imageUrl) {
-          <img
-            [src]="nowPlaying()!.imageUrl"
-            [alt]="nowPlaying()!.album"
-            class="h-20 w-20 flex-none rounded-lg object-cover ring-1 ring-white/10"
-          />
-        }
-        <div class="min-w-0">
-          <p class="truncate text-lg font-semibold">{{ nowPlaying()!.name }}</p>
-          <p class="truncate text-neutral-300">{{ nowPlaying()!.artist }}</p>
-          <p class="truncate text-sm text-neutral-500">{{ nowPlaying()!.album }}</p>
+  <!-- Now-playing footer: full width, content centered -->
+  <footer class="w-full border-t border-white/10 bg-neutral-900">
+    <div class="mx-auto w-full max-w-md px-6 py-5">
+      <h1 class="mb-3 text-xs font-medium uppercase tracking-widest text-neutral-400">
+        Now Playing
+      </h1>
+
+      @if (nowPlaying() === undefined) {
+        <!-- Loading / connecting -->
+        <p class="text-neutral-400">Connecting to Last.fm…</p>
+      } @else if (nowPlaying() === null) {
+        <!-- Nothing playing -->
+        <p class="text-neutral-400">Nothing playing right now</p>
+      } @else {
+        <!-- Currently playing -->
+        <div class="flex items-center gap-4">
+          @if (nowPlaying()!.imageUrl) {
+            <img
+              [src]="nowPlaying()!.imageUrl"
+              [alt]="nowPlaying()!.album"
+              class="h-16 w-16 flex-none rounded-lg object-cover ring-1 ring-white/10"
+            />
+          }
+          <div class="min-w-0">
+            <p class="truncate text-lg font-semibold">{{ nowPlaying()!.name }}</p>
+            <p class="truncate text-neutral-300">{{ nowPlaying()!.artist }}</p>
+            <p class="truncate text-sm text-neutral-500">{{ nowPlaying()!.album }}</p>
+          </div>
         </div>
-      </div>
-    }
-  </section>
-</main>
+      }
+    </div>
+  </footer>
+</div>

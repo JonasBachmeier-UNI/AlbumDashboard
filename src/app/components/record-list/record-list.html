@@ -1,0 +1,96 @@
+<section class="mx-auto w-full max-w-2xl px-6 py-10">
+  <h2 class="mb-6 text-sm font-medium uppercase tracking-widest text-neutral-400">
+    Records
+  </h2>
+
+  @if (sessions() === undefined) {
+    <p class="text-neutral-500">Loading your records…</p>
+  } @else if (sessions()!.length === 0) {
+    <p class="text-neutral-500">
+      No records tracked yet. Listen to an album in order, or run the history backfill.
+    </p>
+  } @else {
+    <ul class="space-y-3">
+      @for (r of sessions(); track r.id) {
+        <li
+          class="flex items-center gap-4 rounded-xl bg-neutral-900 p-4 ring-1"
+          [ngClass]="r.status === 'in_progress' ? 'ring-blue-500/40' : 'ring-white/10'"
+        >
+          @if (r.album.imageUrl) {
+            <img
+              [src]="r.album.imageUrl"
+              [alt]="r.album.title"
+              class="h-14 w-14 flex-none rounded-md object-cover ring-1 ring-white/10"
+            />
+          } @else {
+            <div class="h-14 w-14 flex-none rounded-md bg-neutral-800"></div>
+          }
+
+          <div class="min-w-0 flex-1">
+            <div class="flex items-baseline justify-between gap-3">
+              <p class="truncate font-semibold">{{ r.album.title }}</p>
+              <div class="flex flex-none items-center gap-2">
+                <span
+                  class="rounded-full px-2 py-0.5 text-xs font-medium"
+                  [ngClass]="{
+                    'bg-emerald-500/15 text-emerald-400': r.status === 'completed',
+                    'bg-blue-500/15 text-blue-400': r.status === 'in_progress',
+                    'bg-neutral-700/40 text-neutral-400': r.status === 'abandoned'
+                  }"
+                >
+                  {{ r.status === 'in_progress' ? 'listening' : r.status }}
+                </span>
+                <button
+                  type="button"
+                  (click)="remove(r)"
+                  title="Delete this record"
+                  aria-label="Delete this record"
+                  class="text-neutral-600 transition-colors hover:text-red-400"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            <p class="truncate text-sm text-neutral-400">{{ r.album.artist }}</p>
+
+            <!-- 1–5 star rating (click a set star again to clear) -->
+            <div class="mt-1 flex items-center gap-0.5">
+              @for (star of stars; track star) {
+                <button
+                  type="button"
+                  (click)="rate(r, star)"
+                  [attr.aria-label]="star + ' star' + (star === 1 ? '' : 's')"
+                  class="text-base leading-none transition-colors"
+                  [ngClass]="
+                    (r.album.rating ?? 0) >= star
+                      ? 'text-amber-400'
+                      : 'text-neutral-700 hover:text-amber-400/60'
+                  "
+                >
+                  ★
+                </button>
+              }
+            </div>
+
+            <!-- Progress bar -->
+            <div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-neutral-800">
+              <div
+                class="h-full rounded-full"
+                [ngClass]="r.status === 'completed' ? 'bg-emerald-500' : 'bg-blue-500'"
+                [style.width.%]="progressPct(r)"
+              ></div>
+            </div>
+
+            <p class="mt-1 text-xs text-neutral-500">
+              {{ r.furthestPosition }} / {{ r.album.totalTracks }} tracks
+              @if (r.status === 'in_progress' && r.furthestPosition < r.album.totalTracks) {
+                · resume at track {{ resumeTrack(r) }}
+              }
+              · {{ r.endedAt ?? r.startedAt | date: 'mediumDate' }}
+            </p>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+</section>

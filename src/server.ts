@@ -7,22 +7,91 @@ import {
 import express from 'express';
 import { join } from 'node:path';
 
+import {
+  deleteRecord,
+  getCurrentRecord,
+  listRecords,
+  setAlbumRating,
+} from './server/records';
+import { syncOnce } from './server/sync';
+import type { SessionStatus } from './server/db/schema';
+
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
 const app = express();
 const angularApp = new AngularNodeAppEngine();
 
+app.use(express.json());
+
 /**
- * Example Express Rest API endpoints can be defined here.
- * Uncomment and define endpoints as necessary.
- *
- * Example:
- * ```ts
- * app.get('/api/{*splat}', (req, res) => {
- *   // Handle API request
- * });
- * ```
+ * REST API for the dashboard. These must be registered BEFORE the Angular
+ * catch-all handler below, otherwise SSR would swallow them.
  */
+const VALID_STATUS: readonly SessionStatus[] = ['in_progress', 'completed', 'abandoned'];
+
+// All detected record sessions, newest first. Optional ?status= filter.
+app.get('/api/records', async (req, res, next) => {
+  try {
+    const status = req.query['status'];
+    const filter =
+      typeof status === 'string' && (VALID_STATUS as readonly string[]).includes(status)
+        ? (status as SessionStatus)
+        : undefined;
+    res.json(await listRecords(filter));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// The currently in-progress record (for the "resume" display), or null.
+app.get('/api/records/current', async (_req, res, next) => {
+  try {
+    res.json(await getCurrentRecord());
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Soft-delete a record session (stays hidden across re-syncs).
+app.delete('/api/records/:id', async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      res.status(400).json({ error: 'invalid id' });
+      return;
+    }
+    const ok = await deleteRecord(id);
+    res.status(ok ? 204 : 404).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Set or clear an album's 1–5 star rating. Body: { rating: 1..5 | null }.
+app.put('/api/albums/:id/rating', async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const raw = (req.body as { rating?: unknown })?.rating;
+    const rating = raw === null || raw === 0 ? null : Number(raw);
+    if (!Number.isInteger(id) || (rating !== null && (rating < 1 || rating > 5))) {
+      res.status(400).json({ error: 'rating must be an integer 1–5, or null to clear' });
+      return;
+    }
+    const ok = await setAlbumRating(id, rating);
+    res.status(ok ? 204 : 404).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Manually trigger a sync (handy for testing without waiting for the poller).
+app.post('/api/sync', async (_req, res, next) => {
+  try {
+    res.json(await syncOnce());
+  } catch (err) {
+    next(err);
+  }
+});
 
 /**
  * Serve static files from /browser

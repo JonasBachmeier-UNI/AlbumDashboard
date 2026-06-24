@@ -3,15 +3,16 @@ import { Component, PLATFORM_ID, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, of, switchMap, timer } from 'rxjs';
 
+import { RecordList } from './components/record-list/record-list';
 import { Track } from './models/track.model';
 import { LastfmService } from './services/lastfm.service';
 
 /** How often to re-check what's playing, in milliseconds. */
-const POLL_INTERVAL_MS = 15_000;
+const POLL_INTERVAL_MS = 5_000;
 
 @Component({
   selector: 'app-root',
-  imports: [],
+  imports: [RecordList],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
