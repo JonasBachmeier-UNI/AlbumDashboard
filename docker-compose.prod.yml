@@ -1,0 +1,72 @@
+# Production stack. Deployed via .github/deploy.yml:
+#   docker compose -f docker-compose.prod.yml build && ... up -d
+#
+# Reads its config from a .env file in this directory (created once on the
+# server — NOT committed). See deploy/.env.prod.example for the required keys.
+#
+# Postgres is internal only (no published host port), so it can't clash with
+# anything else on the box. A reverse proxy should point your subdomain at
+# the app's published port (APP_PORT, default 4101).
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: album
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: albumdashboard
+    volumes:
+      - album_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U album -d albumdashboard']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # One-shot: syncs the DB schema (creates tables on first run), then exits.
+  # --force runs non-interactively (no TTY in a container).
+  migrate:
+    build: .
+    image: albumtracker:latest
+    command: npx drizzle-kit push --force
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # The SSR web app + REST API.
+  app:
+    image: albumtracker:latest
+    restart: unless-stopped
+    command: node dist/albumdashboard/server/server.mjs
+    environment:
+      PORT: 4000
+      DATABASE_URL: ${DATABASE_URL}
+      LASTFM_API_KEY: ${LASTFM_API_KEY}
+      LASTFM_USER: ${LASTFM_USER}
+    ports:
+      - '${APP_PORT:-4101}:4000'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+
+  # Always-on background sync with Last.fm.
+  poller:
+    image: albumtracker:latest
+    restart: unless-stopped
+    command: npm run poller
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      LASTFM_API_KEY: ${LASTFM_API_KEY}
+      LASTFM_USER: ${LASTFM_USER}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+
+volumes:
+  album_pgdata:

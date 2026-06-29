@@ -1,0 +1,10 @@
+node_modules
+dist
+.angular
+.git
+.github
+.env
+*.log
+**/__screenshots__
+out-tsc
+coverage

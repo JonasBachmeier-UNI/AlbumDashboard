@@ -9,6 +9,8 @@
     "test": "ng test",
     "serve:ssr:albumdashboard": "node dist/albumdashboard/server/server.mjs",
     "db:push": "drizzle-kit push",
+    "poller": "tsx src/server/poller.ts",
+    "backfill": "tsx src/server/backfill.ts",
     "sync": "tsx --env-file=.env src/server/poller.ts",
     "sync:history": "tsx --env-file=.env src/server/backfill.ts"
   },
