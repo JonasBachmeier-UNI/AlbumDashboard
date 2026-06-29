@@ -19,7 +19,16 @@ import type { SessionStatus } from './server/db/schema';
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
 const app = express();
-const angularApp = new AngularNodeAppEngine();
+// Behind the Caddy reverse proxy: allow our public host(s) (Angular's SSRF
+// protection rejects unknown Host headers) and trust the X-Forwarded-* headers
+// Caddy sets. ALLOWED_HOSTS is a comma-separated list.
+const angularApp = new AngularNodeAppEngine({
+  allowedHosts: (process.env['ALLOWED_HOSTS'] ?? 'localhost')
+    .split(',')
+    .map((h) => h.trim())
+    .filter(Boolean),
+  trustProxyHeaders: true,
+});
 
 app.use(express.json());
 

@@ -42,6 +42,8 @@ services:
     command: node dist/albumdashboard/server/server.mjs
     environment:
       PORT: 4000
+      # Public host(s) Angular SSR will accept (comma-separated). Behind Caddy.
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-album.jonasbachmeier.de}
       DATABASE_URL: ${DATABASE_URL}
       LASTFM_API_KEY: ${LASTFM_API_KEY}
       LASTFM_USER: ${LASTFM_USER}
