@@ -45,8 +45,13 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       LASTFM_API_KEY: ${LASTFM_API_KEY}
       LASTFM_USER: ${LASTFM_USER}
-    ports:
-      - '${APP_PORT:-4101}:4000'
+    # No published host port — the Caddy proxy reaches it as `album-app:4000`
+    # over the shared `web` network.
+    networks:
+      default: {}
+      web:
+        aliases:
+          - album-app
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -67,6 +72,12 @@ services:
         condition: service_completed_successfully
       db:
         condition: service_healthy
+
+networks:
+  # Shared with the Caddy proxy (and the wedding app). Create once on the
+  # server:  docker network create web
+  web:
+    external: true
 
 volumes:
   album_pgdata:

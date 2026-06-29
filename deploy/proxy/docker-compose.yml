@@ -1,0 +1,30 @@
+# Shared reverse proxy for the whole server. Owns ports 80/443, terminates TLS
+# (automatic Let's Encrypt), and routes by hostname to each app over the shared
+# `web` Docker network.
+#
+# Setup on the server (once):
+#   docker network create web
+#   mkdir -p /home/bachi/proxy && cd /home/bachi/proxy
+#   # copy this file + Caddyfile here, then:
+#   docker compose up -d
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data # provisioned certs live here — persist them
+      - caddy_config:/config
+    networks:
+      - web
+
+networks:
+  web:
+    external: true
+
+volumes:
+  caddy_data:
+  caddy_config:

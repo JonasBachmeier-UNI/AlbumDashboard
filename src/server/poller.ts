@@ -5,7 +5,7 @@ import { syncOnce } from './sync';
  * sessions stay current even when no browser is open. Runs as its own process
  * (decoupled from the SSR server) — start with:  npm run sync
  */
-const INTERVAL_MS = 5_000;
+const INTERVAL_MS = 30_000;
 
 let running = false;
 

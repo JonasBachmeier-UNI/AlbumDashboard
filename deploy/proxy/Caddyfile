@@ -1,0 +1,16 @@
+# Caddy automatically provisions + renews Let's Encrypt certs for every
+# hostname below (port 80 must be reachable, which it is — Caddy owns it).
+{
+	email jbac@num42.de
+}
+
+# Wedding app (unchanged Phoenix container, now reached over the `web` network
+# by its alias `hochzeit` on its HTTP port 4000).
+jonasbachmeier.de, www.jonasbachmeier.de, bachisserver.duckdns.org {
+	reverse_proxy hochzeit:4000
+}
+
+# This dashboard.
+album.jonasbachmeier.de {
+	reverse_proxy album-app:4000
+}

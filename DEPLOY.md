@@ -7,8 +7,12 @@ The app ships as one Docker image run in three roles via
 | --------- | ------------------------------------------------- |
 | `db`      | Postgres 17 (internal only — no published port)   |
 | `migrate` | one-shot: creates/updates tables, then exits      |
-| `app`     | SSR web app + REST API, published on `APP_PORT`   |
+| `app`     | SSR web app + REST API (no host port — behind Caddy) |
 | `poller`  | always-on Last.fm sync                            |
+
+A shared **Caddy** reverse proxy (in `deploy/proxy/`) owns ports 80/443 and routes
+both `album.jonasbachmeier.de` (this app) and `jonasbachmeier.de` (the wedding app)
+by hostname over a shared `web` Docker network, with automatic HTTPS.
 
 `git push` to `main` triggers [.github/deploy.yml](.github/deploy.yml), which SSHes
 in, pulls, rebuilds, and restarts the stack.
@@ -40,27 +44,54 @@ cd /home/bachi/albumtracker
 
 # Create the prod env file (gitignored) from the template, then edit it:
 cp deploy/.env.prod.example .env
-nano .env        # set a strong POSTGRES_PASSWORD + matching DATABASE_URL; pick APP_PORT
+nano .env        # set a strong POSTGRES_PASSWORD + matching DATABASE_URL
 ```
 Make sure Docker works without sudo for the deploy user:
 `sudo usermod -aG docker $USER` then re-login (otherwise the workflow's
 `docker compose` calls fail).
 
-### 3. Reverse proxy (subdomain)
-Point a DNS **A record** for `albums.yourdomain.com` at the server, then route it
-to `APP_PORT`. If you're not sure what proxy is running, check:
+### 3. Shared Caddy reverse proxy (one-time, server-wide)
+The wedding app currently binds 80/443 directly. We put a Caddy proxy in front of
+**both** apps so each domain gets routed by hostname. DNS for both
+`jonasbachmeier.de` and `album.jonasbachmeier.de` already points at the server.
+
 ```bash
-sudo ss -tlnp | grep -E ':(80|443)\b'    # nginx? caddy? traefik?
-docker ps                                 # a traefik/caddy container?
+# a) Shared network the proxy + both apps attach to:
+docker network create web
+
+# b) Stand up the proxy (files in this repo under deploy/proxy/):
+mkdir -p /home/bachi/proxy
+cp deploy/proxy/docker-compose.yml deploy/proxy/Caddyfile /home/bachi/proxy/
 ```
-- **nginx**: use [deploy/nginx-albums.conf.example](deploy/nginx-albums.conf.example) (instructions inside), then `certbot` for TLS.
-- **Caddy**: add to the Caddyfile — TLS is automatic:
+
+**c) Move the wedding app behind Caddy** — edit its `docker-compose.yml`:
+- In the `app` service, **remove** the `- "80:4000"` and `- "443:443"` port lines
+  (keep `4000:4000` only if you want direct access; not required). Its TLS/cert
+  mounts can stay — they're just unused now.
+- Attach it to the shared network with the alias Caddy expects:
+  ```yaml
+      networks:
+        default: {}
+        web:
+          aliases: [hochzeit]
   ```
-  albums.yourdomain.com {
-      reverse_proxy 127.0.0.1:4101
-  }
+- Add at the bottom of that compose file:
+  ```yaml
+  networks:
+    web:
+      external: true
   ```
-- **Traefik**: add router/service labels to the `app` service pointing at port 4000.
+Then bring the proxy + wedding app up:
+```bash
+cd /home/bachi/<wedding-dir> && docker compose up -d   # now without 80/443
+cd /home/bachi/proxy        && docker compose up -d     # Caddy grabs 80/443, gets certs
+```
+Caddy auto-provisions Let's Encrypt certs for all four hostnames. Verify:
+`curl -I https://jonasbachmeier.de` and (after the album app is up)
+`curl -I https://album.jonasbachmeier.de`.
+
+> ⚠️ Brief wedding-site downtime (~1 min) during the switch, while ports move from
+> the Phoenix container to Caddy and the first certs are issued.
 
 ## Deploy
 ```bash
